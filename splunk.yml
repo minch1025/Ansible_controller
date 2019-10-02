@@ -1,0 +1,75 @@
+---
+- hosts: servers
+  gather_facts: no
+  become: yes
+
+  tasks:
+
+    - name: add a new user
+      user: name=splunk state=present
+
+    - name: ensure a list of packages installed
+      yum:
+        name: "{{ packages }}"
+      vars:
+        packages:
+          - git
+          - wget
+
+    - name: Download Splunk Indexer file
+      action: shell sudo wget -O splunk-7.3.1.1-7651b7244cf2-Linux-x86_64.tgz 'https://www.splunk.com/bin/splunk/DownloadActivityServlet?architecture=x86_64&platform=linux&version=7.3.1.1&product=splunk&filename=splunk-7.3.1.1-7651b7244cf2-Linux-x86_64.tgz&wget=true'
+
+    - name: Install Splunk Indexer
+      unarchive:
+          src: /root/splunk-7.3.1.1-7651b7244cf2-Linux-x86_64.tgz
+          dest: /opt
+          remote_src: yes
+
+    - name : Setting Owner and Group 
+      file: 
+          path: /opt/splunk
+          owner: splunk
+          group: splunk
+          recurse: yes
+    - name : accept license
+      tags:
+        - install 
+      shell: /opt/splunk/bin/splunk start --accept-license --answer-yes --seed-passwd km2y-2019@splunk
+    - name : Enable Splunk to auto-start on boot 
+      tags:
+        - install
+      shell: /opt/splunk/bin/splunk enable boot-start -user splunk
+    
+    - name : Create Ulimit directory
+      file:
+        path: /etc/systemd/system/splunk.service.d/
+        state: directory
+    - name : Create Ulimit file
+      copy:        
+        dest: /etc/systemd/system/splunk.service.d/limits.conf
+        content: |
+         [Service]
+         LimitNOFILE=65535
+    
+    - name: Invalidation THP (Create directory)
+      file:
+        path: /etc/tuned/virtual-guest
+        state: directory
+        
+    - name: Invalidation THP (Create file)
+      copy:
+        dest: /etc/tuned/virtual-guest/tuned.conf
+        content: |
+         [main]
+         include= virtual-guest
+         [vm]
+         transparent_hugepages=never
+    - name: Changing perm of script, adding "+x"
+      file:
+        dest: /etc/tuned/virtual-guest/tuned.conf
+        mode: a+x
+    - name: Restart server 
+      command: /sbin/shutdown -r +1
+      async: 0
+      poll: 0
+      ignore_errors: true
