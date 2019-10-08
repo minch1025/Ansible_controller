@@ -1,0 +1,102 @@
+---
+- hosts: test1 (for splunk_mc01.localhost)
+  gather_facts: no
+  become: yes
+
+  tasks:
+  - name: Create license folder
+    file:
+      path: /tmp/splunk-license
+      state: directory
+      owner: splunk
+      grorup: splunk
+      mode: 744
+
+  - name: Copy file from ansible server path 
+    copy:
+      src:/work/splunk-license/Splunk_20200329.License
+      dest: /tmp/splunk-license
+      remote_src: yes
+ 
+  - name: restart splunk systemd
+    systemd:
+      state: restarted
+      daemon_reload: yes
+
+  - name: Set forward-server
+    command: /opt/splunk/bin/splunk add forward-server -auth admin:km2y-2019 192.168.1.201:9997
+    become: yes
+    become_method: sudo
+  - name: Set forward-server(2)
+    command: /opt/splunk/bin/splunk add forward-server -auth admin:km2y-2019 192.168.1.202:9997
+    become: yes
+    become_method: sudo 
+
+  - name: Set all indexers as search peers
+    command:  /opt/splunk/bin/splunk add search-server https://192.168.1.200 -auth admin:km2y-2019 -remote Username admin -remotePassword km2y-2019
+
+   - name: Set all indexers as search peers(2)
+    command:  /opt/splunk/bin/splunk add search-server https://192.168.1.201 -auth admin:km2y-2019 -remote Username admin -remotePassword km2y-2019
+    become: yes
+    become_method: sudo
+
+  - name: Set all indexers as search peers(3)
+    command:  /opt/splunk/bin/splunk add search-server https://192.168.1.202 -auth admin:km2y-2019 -remote Username admin -remotePassword km2y-2019
+
+  - name: Set all indexers as search peers(4)
+    command:  /opt/splunk/bin/splunk add search-server https://192.168.1.203 -auth admin:km2y-2019 -remote Username admin -remotePassword km2y-2019
+
+  - name: Enable Web SSL(https)
+    ini_file: 
+       dest: /opt/splunk/bin/splunk
+       section: settings
+       option: enableSplunkWebSSL
+       value: True
+      
+  - name: restart splunk systemd
+    systemd:
+      state: restarted
+      daemon_reload: yes
+
+
+
+
+- hosts: test2 
+  gather_facts: no
+  become: yes
+
+  tasks:
+  - name: Custom set node as license slave
+    command: /opt/splunk/bin/splunk edit licenser-localslave -master_uri https://192.168.1.204:8089 -auth admin:km2y-2019
+    register: lic_slave
+
+  - name: Register deployment server
+    command: /opt/splunk/bin/splunk set deploy-poll https://192.168.1.204:8089
+    become: yes
+    become_method: sudo 
+
+  - name: Configured log tranmit
+
+
+
+
+
+- hosts: test3 (for splunk_shd01.localhost)
+  gather_facts: no
+  become: yes
+  
+  tasks:
+  - name: Log forwarding settings
+  - name: Distributed search settings
+  - name: Web access settings (https) 
+  - name: Reboot
+
+- hosts: test4 (for splunk_hf01.localhost)
+  gather_facts: no
+  become: yes
+  
+  tasks:
+  - name: Log forwarding settins
+  - name: Distributed search settings
+  - name: Web access settings (https) 
+  - name: Reboot 
