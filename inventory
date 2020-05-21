@@ -1,0 +1,33 @@
+#Details:Trying to configured Splunk MC + LM + DS 
+[KwonTest]
+host6 ansible_ssh_host=192.168.1.54 ansible_ssh_user=root ansible_ssh_pass=km2y-2019
+
+[SplunkMC]
+host5 ansible_ssh_host=192.168.1.204 ansible_ssh_user=root ansible_ssh_pass=km2y-2019
+
+
+#Details: Trying to configured basic settings to SH,Idx1,Idx2,HF
+[SearchHead]
+host1 ansible_ssh_host=192.168.1.200 ansible_ssh_user=root ansible_ssh_pass=km2y-2019
+
+#Details: Trying to configured settings to Splunk SH
+[Indexer]
+host2 ansible_ssh_host=192.168.1.201 ansible_ssh_user=root
+host3 ansible_ssh_host=192.168.1.202 ansible_ssh_user=root ansible_ssh_pass=km2y-2019
+
+#Details: Trying to configured settings to Splunk HF
+[HeavyForwarder]
+host4 ansible_ssh_host=192.168.1.203 ansible_ssh_user=root ansible_ssh_pass=km2y-2019
+
+
+[LicenseSlave:children]
+SearchHead
+Indexer
+HeavyForwarder
+
+
+[LogReceiver:children]
+Indexer
+HeavyForwarder
+
+

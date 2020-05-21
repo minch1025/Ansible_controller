@@ -1,5 +1,5 @@
 ---
-- hosts: all
+- hosts: KwonTest
   gather_facts: no
   become: yes
 
@@ -32,6 +32,8 @@
           recurse: yes
 
     - name : accept license
+      become: yes
+      become_user: splunk
       tags:
         - install 
       command: /opt/splunk/bin/splunk start --accept-license --answer-yes --seed-passwd km2y-2019@splunk

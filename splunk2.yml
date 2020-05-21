@@ -1,5 +1,5 @@
 ---
-- hosts: test1 (for splunk_mc01.localhost)
+- hosts: SplunkMC
   gather_facts: no
   become: yes
 
@@ -9,42 +9,78 @@
       path: /tmp/splunk-license
       state: directory
       owner: splunk
-      grorup: splunk
+      group: splunk
       mode: 744
 
   - name: Copy file from ansible server path 
     copy:
-      src:/work/splunk-license/Splunk_20200329.License
+      src: /work/splunk-license/Splunk_20200329.License
       dest: /tmp/splunk-license
-      remote_src: yes
- 
-  - name: restart splunk systemd
-    systemd:
-      state: restarted
-      daemon_reload: yes
 
-  - name: Set forward-server
-    command: /opt/splunk/bin/splunk add forward-server -auth admin:km2y-2019 192.168.1.201:9997
+  - name: add license 
+    command: sudo -u splunk /opt/splunk/bin/splunk add licenses /tmp/splunk-license/Splunk_20200329.License -auth admin:km2y-2019@splunk
+    ignore_errors: True
+
+  - name: restart splunk systemd
+    command: /opt/splunk/bin/splunk restart
+
+
+
+- hosts: LicenseSlave
+  gather_facts: no
+
+  tasks:
+  - name: Change license group
+    command: sudo -u splunk /opt/splunk/bin/splunk edit licenser-localslave -master_uri https://192.168.1.204:8089 -auth admin:km2y-2019@splunk
+    register: lic_slave
+
+  - name: Registor servers to deployment server.
+    command: sudo -u splunk /opt/splunk/bin/splunk set deploy-poll https://192.168.1.204:8089 -auth admin:km2y-2019@splunk
+
+
+
+- hosts: LogReceiver
+  gather_facts: no
+ 
+  tasks:
+  - name: Enable the Splunk to Splunk port ( Configure Log reception )
+    command: sudo -u splunk /opt/splunk/bin/splunk enable listen 9997 -auth admin:km2y-2019@splunk --accept-license --answer-yes --no-prompt
     become: yes
     become_method: sudo
+    ignore_errors: True
+
+- hosts: SplunkMC
+  gather_facts: no
+
+  tasks:
+  - name: Set forward-server
+    command: sudo -u splunk /opt/splunk/bin/splunk add forward-server -auth admin:km2y-2019@splunk 192.168.1.201:9997
+    become: yes
+    become_method: sudo
+    ignore_errors: True
+
   - name: Set forward-server(2)
-    command: /opt/splunk/bin/splunk add forward-server -auth admin:km2y-2019 192.168.1.202:9997
+    command: sudo -u splunk /opt/splunk/bin/splunk add forward-server -auth admin:km2y-2019@splunk 192.168.1.202:9997
     become: yes
     become_method: sudo 
+    ignore_errors: True
 
   - name: Set all indexers as search peers
-    command:  /opt/splunk/bin/splunk add search-server https://192.168.1.200 -auth admin:km2y-2019 -remote Username admin -remotePassword km2y-2019
+    command: /opt/splunk/bin/splunk add search-server https://192.168.1.200:8089 -auth admin:km2y-2019@splunk -remoteUsername admin -remotePassword km2y-2019@splunk
+    ignore_errors: True
 
-   - name: Set all indexers as search peers(2)
-    command:  /opt/splunk/bin/splunk add search-server https://192.168.1.201 -auth admin:km2y-2019 -remote Username admin -remotePassword km2y-2019
-    become: yes
-    become_method: sudo
+  - name: Set all indexers as search peers(2)
+    command: /opt/splunk/bin/splunk add search-server https://192.168.1.201:8089 -auth admin:km2y-2019@splunk -remoteUsername admin -remotePassword km2y-2019@splunk
+    ignore_errors: True
 
   - name: Set all indexers as search peers(3)
-    command:  /opt/splunk/bin/splunk add search-server https://192.168.1.202 -auth admin:km2y-2019 -remote Username admin -remotePassword km2y-2019
+    command: /opt/splunk/bin/splunk add search-server https://192.168.1.202:8089 -auth admin:km2y-2019@splunk -remoteUsername admin -remotePassword km2y-2019@splunk
+    ignore_errors: True
 
   - name: Set all indexers as search peers(4)
-    command:  /opt/splunk/bin/splunk add search-server https://192.168.1.203 -auth admin:km2y-2019 -remote Username admin -remotePassword km2y-2019
+    command: /opt/splunk/bin/splunk add search-server https://192.168.1.203:8089 -auth admin:km2y-2019@splunk -remoteUsername admin -remotePassword km2y-2019@splunk
+    ignore_errors: True
+
 
   - name: Enable Web SSL(https)
     ini_file: 
@@ -54,49 +90,90 @@
        value: True
       
   - name: restart splunk systemd
-    systemd:
-      state: restarted
-      daemon_reload: yes
+    command: /opt/splunk/bin/splunk restart
 
 
 
 
-- hosts: test2 
+- hosts: SearchHead
   gather_facts: no
   become: yes
 
   tasks:
-  - name: Custom set node as license slave
-    command: /opt/splunk/bin/splunk edit licenser-localslave -master_uri https://192.168.1.204:8089 -auth admin:km2y-2019
-    register: lic_slave
-
-  - name: Register deployment server
-    command: /opt/splunk/bin/splunk set deploy-poll https://192.168.1.204:8089
+  - name: Set forward-server
+    command: sudo -u splunk /opt/splunk/bin/splunk add forward-server -auth admin:km2y-2019@splunk 192.168.1.201:9997
     become: yes
-    become_method: sudo 
+    become_method: sudo
+    ignore_errors: True
 
-  - name: Configured log tranmit
+  - name: Set forward-server(2)
+    command: sudo -u splunk /opt/splunk/bin/splunk add forward-server -auth admin:km2y-2019@splunk 192.168.1.202:9997
+    become: yes
+    become_method: sudo
+    ignore_errors: True
+
+  - name: Set all indexers as search peers(1)
+    command: /opt/splunk/bin/splunk add search-server https://192.168.1.201:8089 -auth admin:km2y-2019@splunk -remoteUsername admin -remotePassword km2y-2019@splunk
+    ignore_errors: True
+
+  - name: Set all indexers as search peers(2)
+    command: /opt/splunk/bin/splunk add search-server https://192.168.1.202:8089 -auth admin:km2y-2019@splunk -remoteUsername admin -remotePassword km2y-2019@splunk
+    ignore_errors: True
+
+  - name: Enable Web SSL(https)
+    ini_file:
+       dest: /opt/splunk/bin/splunk
+       section: settings
+       option: enableSplunkWebSSL
+       value: True
+  
+  - name: restart splunk systemd
+    command: /opt/splunk/bin/splunk restart
 
 
 
-
-
-- hosts: test3 (for splunk_shd01.localhost)
+- hosts: Indexer
   gather_facts: no
   become: yes
   
   tasks:
-  - name: Log forwarding settings
-  - name: Distributed search settings
-  - name: Web access settings (https) 
-  - name: Reboot
+  - name: Enable Web SSL(https)
+    ini_file:
+       dest: /opt/splunk/bin/splunk
+       section: settings
+       option: enableSplunkWebSSL
+       value: True 
 
-- hosts: test4 (for splunk_hf01.localhost)
+  - name: restart splunk systemd
+    command: /opt/splunk/bin/splunk restart
+
+
+
+- hosts: HeavyForwarder
   gather_facts: no
   become: yes
   
   tasks:
-  - name: Log forwarding settins
-  - name: Distributed search settings
-  - name: Web access settings (https) 
-  - name: Reboot 
+  - name: Set forward-server
+    command: sudo -u splunk /opt/splunk/bin/splunk add forward-server -auth admin:km2y-2019@splunk 192.168.1.201:9997
+    become: yes
+    become_method: sudo
+    ignore_errors: True
+
+  - name: Set forward-server(2)
+    command: sudo -u splunk /opt/splunk/bin/splunk add forward-server -auth admin:km2y-2019@splunk 192.168.1.202:9997
+    become: yes
+    become_method: sudo
+    ignore_errors: True 
+
+  - name: Enable Web SSL(https)
+    ini_file:
+       dest: /opt/splunk/bin/splunk
+       section: settings
+       option: enableSplunkWebSSL
+       value: True
+
+  - name: restart splunk systemd
+    command: /opt/splunk/bin/splunk restart
+
+
