@@ -1,4 +1,16 @@
 ---
+- hosts: all
+  connection: local
+  gather_facts: false
+  tasks:
+  - name: pause
+    pause:
+      seconds: 120
+    register: result
+  - name: show result
+    debug:
+      var: result
+
 - hosts: SplunkMC
   gather_facts: no
   become: yes

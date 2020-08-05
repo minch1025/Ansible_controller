@@ -92,3 +92,12 @@
       async: 0
       poll: 0
       ignore_errors: true
+
+    - name: pause all
+      pause:   
+        minutes: 2
+      register: result
+
+    - name: show result
+      debug:
+        var: result 
